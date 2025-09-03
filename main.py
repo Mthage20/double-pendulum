@@ -1,4 +1,6 @@
 import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
 
 # --- parameters ---
 g = 9.81
@@ -46,3 +48,38 @@ def energies(s, L1, L2, m1, m2):
     T = 0.5*m1*(vx1**2 + vy1**2) + 0.5*m2*(vx2**2 + vy2**2)
     V = m1*g*y1 + m2*g*y2
     return T, V, T+V
+
+# --- plot setup ---
+fig, ax = plt.subplots(figsize=(6,6))
+ax.set_aspect('equal')
+ax.set_xlim(-L1-L2-0.5, L1+L2+0.5)
+ax.set_ylim(-L1-L2-0.5, 0.5)
+ax.set_title("Interactive Double Pendulum")
+
+line1, = ax.plot([], [], lw=3, color='blue')
+line2, = ax.plot([], [], lw=3, color='green')
+bob1, = ax.plot([], [], 'ro', markersize=10)
+bob2, = ax.plot([], [], 'yo', markersize=10)
+trail, = ax.plot([], [], color='orange', lw=1)
+trail_x, trail_y = [], []
+
+# --- basic animation ---
+def update(frame):
+    global state, trail_x, trail_y
+    state = rk4(state, dt, L1, L2, m1, m2)
+    (x1, y1), (x2, y2) = get_positions(state, L1, L2)
+    line1.set_data([0, x1], [0, y1])
+    line2.set_data([x1, x2], [y1, y2])
+    bob1.set_data([x1], [y1])
+    bob2.set_data([x2], [y2])
+
+    trail_x.append(x2)
+    trail_y.append(y2)
+    if len(trail_x) > 500:
+        trail_x.pop(0); trail_y.pop(0)
+    trail.set_data(trail_x, trail_y)
+
+    return line1, line2, bob1, bob2, trail
+
+ani = FuncAnimation(fig, update, frames=10000, interval=dt*1000, blit=True)
+plt.show()
