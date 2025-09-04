@@ -49,8 +49,12 @@ def energies(s, L1, L2, m1, m2):
     V = m1*g*y1 + m2*g*y2
     return T, V, T+V
 
-# plot setup
-fig, ax = plt.subplots(figsize=(6,6))
+# plot setup: ONE figure, TWO axes
+fig, (ax, ax_energy) = plt.subplots(
+    2, 1, figsize=(6,8), gridspec_kw={'height_ratios':[3,1]}
+)
+
+# pendulum axis
 ax.set_aspect('equal')
 ax.set_xlim(-L1-L2-0.5, L1+L2+0.5)
 ax.set_ylim(-L1-L2-0.5, 0.5)
@@ -63,27 +67,8 @@ bob2, = ax.plot([], [], 'yo', markersize=10)
 trail, = ax.plot([], [], color='orange', lw=1)
 trail_x, trail_y = [], []
 
-# basic animation 
-def update(frame):
-    global state, trail_x, trail_y
-    state = rk4(state, dt, L1, L2, m1, m2)
-    (x1, y1), (x2, y2) = get_positions(state, L1, L2)
-    line1.set_data([0, x1], [0, y1])
-    line2.set_data([x1, x2], [y1, y2])
-    bob1.set_data([x1], [y1])
-    bob2.set_data([x2], [y2])
-
-    trail_x.append(x2)
-    trail_y.append(y2)
-    if len(trail_x) > 500:
-        trail_x.pop(0); trail_y.pop(0)
-    trail.set_data(trail_x, trail_y)
-
-    return line1, line2, bob1, bob2, trail
-
-# Energy subplot
-fig_energy, ax_energy = plt.subplots(figsize=(6,3))
-ax_energy.set_xlim(0, 1000)
+# energy axis
+ax_energy.set_xlim(0, 500)
 ax_energy.set_ylim(-5, 50)
 ax_energy.set_title("Energies")
 line_T, = ax_energy.plot([], [], color='r', label='Kinetic')
@@ -92,16 +77,17 @@ line_E, = ax_energy.plot([], [], color='k', label='Total')
 ax_energy.legend()
 energy_history_T, energy_history_V, energy_history_E = [], [], []
 
-# Updating the animation to track energies
+# Updating the animation
 def update(frame):
     global state, trail_x, trail_y, energy_history_T, energy_history_V, energy_history_E
     state = rk4(state, dt, L1, L2, m1, m2)
     (x1, y1), (x2, y2) = get_positions(state, L1, L2)
+
+    # pendulum
     line1.set_data([0, x1], [0, y1])
     line2.set_data([x1, x2], [y1, y2])
     bob1.set_data([x1], [y1])
     bob2.set_data([x2], [y2])
-
     trail_x.append(x2); trail_y.append(y2)
     if len(trail_x) > 500: trail_x.pop(0); trail_y.pop(0)
     trail.set_data(trail_x, trail_y)
@@ -122,5 +108,6 @@ def update(frame):
     ax_energy.set_xlim(0, max_len)
 
     return line1, line2, bob1, bob2, trail, line_T, line_V, line_E
+
 ani = FuncAnimation(fig, update, frames=10000, interval=dt*1000, blit=True)
-plt.show() 
+plt.show()
