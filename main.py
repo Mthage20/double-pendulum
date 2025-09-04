@@ -1,8 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
+from matplotlib.widgets import Slider
 
-# parameters 
+# parameters
 g = 9.81
 L1, L2 = 2.0, 1.5
 m1, m2 = 1.0, 1.0
@@ -49,12 +50,11 @@ def energies(s, L1, L2, m1, m2):
     V = m1*g*y1 + m2*g*y2
     return T, V, T+V
 
-# plot setup: ONE figure, TWO axes
-fig, (ax, ax_energy) = plt.subplots(
-    2, 1, figsize=(6,8), gridspec_kw={'height_ratios':[3,1]}
-)
+# plot setup 
+fig, (ax, ax_energy) = plt.subplots(2,1, figsize=(6,8), gridspec_kw={'height_ratios':[3,1]})
+plt.subplots_adjust(left=0.1, bottom=0.35)
 
-# pendulum axis
+# pendulum plot
 ax.set_aspect('equal')
 ax.set_xlim(-L1-L2-0.5, L1+L2+0.5)
 ax.set_ylim(-L1-L2-0.5, 0.5)
@@ -67,8 +67,8 @@ bob2, = ax.plot([], [], 'yo', markersize=10)
 trail, = ax.plot([], [], color='orange', lw=1)
 trail_x, trail_y = [], []
 
-# energy axis
-ax_energy.set_xlim(0, 500)
+# energy plot
+ax_energy.set_xlim(0, 1000)
 ax_energy.set_ylim(-5, 50)
 ax_energy.set_title("Energies")
 line_T, = ax_energy.plot([], [], color='r', label='Kinetic')
@@ -77,19 +77,49 @@ line_E, = ax_energy.plot([], [], color='k', label='Total')
 ax_energy.legend()
 energy_history_T, energy_history_V, energy_history_E = [], [], []
 
-# Updating the animation
+# sliders 
+ax_theta1 = plt.axes([0.15, 0.25, 0.7, 0.03])
+ax_theta2 = plt.axes([0.15, 0.20, 0.7, 0.03])
+ax_L1 = plt.axes([0.15, 0.15, 0.7, 0.03])
+ax_L2 = plt.axes([0.15, 0.10, 0.7, 0.03])
+ax_m1 = plt.axes([0.15, 0.05, 0.3, 0.03])
+ax_m2 = plt.axes([0.55, 0.05, 0.3, 0.03])
+
+slider_theta1 = Slider(ax_theta1, 'Theta1', 0, 2*np.pi, valinit=np.pi/2)
+slider_theta2 = Slider(ax_theta2, 'Theta2', 0, 2*np.pi, valinit=np.pi/2+0.01)
+slider_L1 = Slider(ax_L1, 'L1', 0.5, 3.0, valinit=L1)
+slider_L2 = Slider(ax_L2, 'L2', 0.5, 3.0, valinit=L2)
+slider_m1 = Slider(ax_m1, 'M1', 0.1, 5.0, valinit=m1)
+slider_m2 = Slider(ax_m2, 'M2', 0.1, 5.0, valinit=m2)
+
+def reset_sim(val):
+    global state, trail_x, trail_y, L1, L2, m1, m2, energy_history_T, energy_history_V, energy_history_E
+    L1 = slider_L1.val
+    L2 = slider_L2.val
+    m1 = slider_m1.val
+    m2 = slider_m2.val
+    state = np.array([slider_theta1.val, 0.0, slider_theta2.val, 0.0])
+    trail_x.clear(); trail_y.clear()
+    energy_history_T.clear(); energy_history_V.clear(); energy_history_E.clear()
+
+for s in [slider_theta1, slider_theta2, slider_L1, slider_L2, slider_m1, slider_m2]:
+    s.on_changed(reset_sim)
+
+# animation 
 def update(frame):
     global state, trail_x, trail_y, energy_history_T, energy_history_V, energy_history_E
     state = rk4(state, dt, L1, L2, m1, m2)
     (x1, y1), (x2, y2) = get_positions(state, L1, L2)
-
-    # pendulum
     line1.set_data([0, x1], [0, y1])
     line2.set_data([x1, x2], [y1, y2])
     bob1.set_data([x1], [y1])
     bob2.set_data([x2], [y2])
-    trail_x.append(x2); trail_y.append(y2)
-    if len(trail_x) > 500: trail_x.pop(0); trail_y.pop(0)
+
+    # trail
+    trail_x.append(x2)
+    trail_y.append(y2)
+    if len(trail_x) > 500:
+        trail_x.pop(0); trail_y.pop(0)
     trail.set_data(trail_x, trail_y)
 
     # energies
@@ -109,5 +139,13 @@ def update(frame):
 
     return line1, line2, bob1, bob2, trail, line_T, line_V, line_E
 
+
+def on_resize(event):
+    fig.canvas.draw()
+
+fig.canvas.mpl_connect('resize_event', on_resize)
+
+
 ani = FuncAnimation(fig, update, frames=10000, interval=dt*1000, blit=True)
+
 plt.show()
